@@ -20,7 +20,7 @@ Usage:
     python ado_iteration_summary.py --org https://dev.azure.com/YourOrg --project YourProject
     python ado_iteration_summary.py --org https://dev.azure.com/YourOrg --project YourProject --team "YourTeam"
     python ado_iteration_summary.py --org https://dev.azure.com/YourOrg --project YourProject --effort-field "Microsoft.VSTS.Scheduling.StoryPoints"
-    python ado_iteration_summary.py --org https://dev.azure.com/YourOrg --project YourProject --exclude-type "Feature" --exclude-type "Epic" --exclude-type "Bug"
+    python ado_iteration_summary.py --org https://dev.azure.com/YourOrg --project YourProject --exclude-type "Feature" --exclude-type "Epic" --exclude-type "Task" --exclude-type "Bug"
     python ado_iteration_summary.py --org https://dev.azure.com/YourOrg --project YourProject --previous 3
 """
 
@@ -355,12 +355,12 @@ def main():
         "--exclude-type",
         action="append",
         default=None,
-        help="Work item type to exclude (repeatable). Defaults to excluding Feature and Epic.",
+        help="Work item type to exclude (repeatable). Replaces the default list. Defaults to excluding Feature, Epic and Task.",
     )
     parser.add_argument(
         "--no-exclude-types",
         action="store_true",
-        help="Don't exclude any types - include Feature/Epic and everything else.",
+        help="Don't exclude any types - include Feature/Epic/Task and everything else.",
     )
     parser.add_argument(
         "--previous",

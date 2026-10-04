@@ -25,8 +25,8 @@ python ado_iteration_summary.py --org https://dev.azure.com/YourOrg --project Yo
 | `--team "YourTeam"` | Which team's iterations to use | Project's default team |
 | `--effort-field "Microsoft.VSTS.Scheduling.StoryPoints"` | Field(s) to treat as effort; repeatable | Tries `Effort` → `StoryPoints` → `Size`, in that order |
 | `--no-area-filter` | Skip filtering by the team's area path(s); returns every team's items in that iteration | Off (area filter applied) |
-| `--exclude-type "Bug"` | Work item type to exclude; repeatable | Excludes `Feature` and `Epic` |
-| `--no-exclude-types` | Don't exclude anything, including Feature/Epic | Off |
+| `--exclude-type "Bug"` | Work item type to exclude; repeatable. Replaces the default list, so repeat it for every type you want excluded | Excludes `Feature`, `Epic` and `Task` |
+| `--no-exclude-types` | Don't exclude anything, including Feature/Epic/Task | Off |
 | `--previous N` | Also report on the N most recent past iterations | Off (0) |
 | `--done-state "Closed"` | State name counted as "done" for `--previous`; repeatable | `Closed`, `Done`, `Resolved`, `Completed` |
 
@@ -53,7 +53,7 @@ python ado_iteration_summary.py \
 
 1. Lists the team's iterations (`az boards iteration team list`), picks the one covering today's date as current, and the chronologically next one as next.
 2. Looks up the team's area path(s) (`az boards area team list`), since Iteration Path is often shared across teams on the same sprint calendar — Area Path is what actually scopes items to a team.
-3. Runs a WIQL query scoped to each iteration's path **and** the team's area path(s), excluding `Feature`/`Epic` by default, pulling id, title, type, state, and effort field(s).
+3. Runs a WIQL query scoped to each iteration's path **and** the team's area path(s), excluding `Feature`/`Epic`/`Task` by default, pulling id, title, type, state, and effort field(s).
 4. Prints per iteration (current/next):
    - Date range
    - Total item count
