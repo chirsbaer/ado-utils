@@ -60,7 +60,11 @@ if [[ ! -f "$INPUT" ]]; then
   exit 1
 fi
 
-$DRY_RUN || command -v az >/dev/null || { echo "Error: 'az' is not installed." >&2; exit 1; }
+if ! $DRY_RUN; then
+  for cmd in az jq; do
+    command -v "$cmd" >/dev/null || { echo "Error: '$cmd' is not installed." >&2; exit 1; }
+  done
+fi
 
 # Build the full target path: \<project>\Iteration\<target>
 if [[ "$TARGET" == \\* ]]; then
@@ -71,6 +75,18 @@ fi
 
 az_args=(--project "$PROJECT" --path "$TARGET_PATH" --output none)
 [[ -n "$ORG" ]] && az_args+=(--organization "$ORG")
+
+common_args=(--project "$PROJECT")
+[[ -n "$ORG" ]] && common_args+=(--organization "$ORG")
+
+# Moving an iteration clears its start/finish dates in Azure DevOps.
+# Snapshot the whole iteration tree first so the dates can be restored.
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+if ! $DRY_RUN; then
+  echo "Saving current iteration dates..."
+  az boards iteration project list "${common_args[@]}" --depth 20 --output json > "$TMP_DIR/before.json"
+fi
 
 moved=0
 failed=0
@@ -92,5 +108,33 @@ while IFS= read -r ID || [[ -n "$ID" ]]; do
   fi
 done < "$INPUT"
 
-$DRY_RUN || echo "Done. Moved: $moved, failed: $failed."
-[[ $failed -eq 0 ]]
+restore_failed=0
+if ! $DRY_RUN && [[ $moved -gt 0 ]]; then
+  echo "Restoring iteration dates..."
+  az boards iteration project list "${common_args[@]}" --depth 20 --output json > "$TMP_DIR/after.json"
+
+  # Every iteration that had dates before the move but has none now.
+  jq -r -n --slurpfile b "$TMP_DIR/before.json" --slurpfile a "$TMP_DIR/after.json" '
+    def nodes: recurse(.children[]?);
+    ($b[0] | [nodes
+              | select(.attributes.startDate != null and .attributes.finishDate != null)
+              | {key: (.id | tostring), value: .attributes}] | from_entries) as $dates
+    | $a[0] | nodes
+    | select(.attributes.startDate == null or .attributes.finishDate == null)
+    | $dates[.id | tostring] as $d
+    | select($d != null)
+    | [.path, $d.startDate, $d.finishDate] | join("\t")' > "$TMP_DIR/restore.tsv"
+
+  while IFS=$'\t' read -r NODE_PATH START FINISH; do
+    [[ -z "$NODE_PATH" ]] && continue
+    echo "  $NODE_PATH: ${START%%T*} - ${FINISH%%T*}"
+    if ! az boards iteration project update "${common_args[@]}" --path "$NODE_PATH" \
+         --start-date "$START" --finish-date "$FINISH" --output none </dev/null; then
+      echo "  Failed to restore dates for $NODE_PATH" >&2
+      restore_failed=$((restore_failed + 1))
+    fi
+  done < "$TMP_DIR/restore.tsv"
+fi
+
+$DRY_RUN || echo "Done. Moved: $moved, failed: $failed, date restores failed: $restore_failed."
+[[ $failed -eq 0 && $restore_failed -eq 0 ]]

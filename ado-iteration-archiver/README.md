@@ -19,7 +19,7 @@ anything is changed.
   ```bash
   az extension add --name azure-devops
   ```
-- **jq** (only needed by `find_iteration.sh`) – <https://jqlang.org/download/>
+- **jq** – <https://jqlang.org/download/>
 - **Signed in** to Azure DevOps, either with `az login` or with a
   [personal access token](https://learn.microsoft.com/azure/devops/cli/log-in-via-pat):
   ```bash
@@ -143,3 +143,7 @@ export AZURE_DEVOPS_PROJECT="My Project"
   pattern that matches `Archive`).
 - Moving an iteration keeps the work items assigned to it; only their iteration
   path changes.
+- Azure DevOps clears an iteration's start and finish dates when it is moved.
+  `move_iteration.sh` saves the dates of the whole iteration tree before moving
+  and restores them afterwards. Any iteration whose dates could not be restored
+  is reported, and the script exits non-zero.
